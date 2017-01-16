@@ -100,7 +100,7 @@ export let Popup = class Popup {
     });
   }
 
-  pollPopup() {
+  pollPopup(redirectUri) {
     return new Promise((resolve, reject) => {
       this.polling = PLATFORM.global.setInterval(() => {
         let errorData;
@@ -108,6 +108,27 @@ export let Popup = class Popup {
         try {
           if (this.popupWindow.location.host === PLATFORM.global.document.location.host && (this.popupWindow.location.search || this.popupWindow.location.hash)) {
             const qs = parseUrl(this.popupWindow.location);
+
+            if (qs.error) {
+              reject({ error: qs.error });
+            } else {
+              resolve(qs);
+            }
+
+            this.popupWindow.close();
+            PLATFORM.global.clearInterval(this.polling);
+          }
+
+          if (this.popupWindow.location.indexOf(redirectUri) !== 0) {
+            return;
+          }
+
+          const parser = DOM.createElement('a');
+
+          parser.href = this.popupWindow.location;
+
+          if (parser.search || parser.hash) {
+            const qs = parseUrl(parser);
 
             if (qs.error) {
               reject({ error: qs.error });
@@ -630,7 +651,7 @@ export let OAuth2 = (_dec4 = inject(Storage, Popup, BaseConfig), _dec4(_class5 =
 
     const url = provider.authorizationEndpoint + '?' + buildQueryString(this.buildQuery(provider));
     const popup = this.popup.open(url, provider.name, provider.popupOptions);
-    const openPopup = this.config.platform === 'mobile' ? popup.eventListener(provider.redirectUri) : popup.pollPopup();
+    const openPopup = this.config.platform === 'mobile' ? popup.eventListener(provider.redirectUri) : popup.pollPopup(provider.redirectUri);
 
     return openPopup.then(oauthData => {
       if (provider.responseType === 'token' || provider.responseType === 'id_token token' || provider.responseType === 'token id_token') {

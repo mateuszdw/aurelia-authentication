@@ -56,7 +56,7 @@ export class Popup {
     });
   }
 
-  pollPopup(): Promise<any> {
+  pollPopup(redirectUri: string): Promise<any> {
     return new Promise((resolve, reject) => {
       this.polling = PLATFORM.global.setInterval(() => {
         let errorData;
@@ -75,6 +75,32 @@ export class Popup {
             this.popupWindow.close();
             PLATFORM.global.clearInterval(this.polling);
           }
+
+          // electron fix
+          // do nothing when redirect location not starts with redirectUri
+          if (this.popupWindow.location.indexOf(redirectUri) !== 0) {
+            return;
+          }
+
+          // get URI from this.popupWindow.location because electron
+          // windows dont have location.host or hash
+          const parser = DOM.createElement('a');
+
+          parser.href = this.popupWindow.location;
+
+          if (parser.search || parser.hash) {
+            const qs = parseUrl(parser);
+
+            if (qs.error) {
+              reject({error: qs.error});
+            } else {
+              resolve(qs);
+            }
+
+            this.popupWindow.close();
+            PLATFORM.global.clearInterval(this.polling);
+          }
+
         } catch (error) {
           errorData = error;
         }

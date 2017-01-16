@@ -138,7 +138,7 @@ var Popup = exports.Popup = function () {
     });
   };
 
-  Popup.prototype.pollPopup = function pollPopup() {
+  Popup.prototype.pollPopup = function pollPopup(redirectUri) {
     var _this2 = this;
 
     return new Promise(function (resolve, reject) {
@@ -153,6 +153,27 @@ var Popup = exports.Popup = function () {
               reject({ error: qs.error });
             } else {
               resolve(qs);
+            }
+
+            _this2.popupWindow.close();
+            _aureliaPal.PLATFORM.global.clearInterval(_this2.polling);
+          }
+
+          if (_this2.popupWindow.location.indexOf(redirectUri) !== 0) {
+            return;
+          }
+
+          var parser = _aureliaPal.DOM.createElement('a');
+
+          parser.href = _this2.popupWindow.location;
+
+          if (parser.search || parser.hash) {
+            var _qs = parseUrl(parser);
+
+            if (_qs.error) {
+              reject({ error: _qs.error });
+            } else {
+              resolve(_qs);
             }
 
             _this2.popupWindow.close();
@@ -706,7 +727,7 @@ var OAuth2 = exports.OAuth2 = (_dec4 = (0, _aureliaDependencyInjection.inject)(S
 
     var url = provider.authorizationEndpoint + '?' + (0, _aureliaPath.buildQueryString)(this.buildQuery(provider));
     var popup = this.popup.open(url, provider.name, provider.popupOptions);
-    var openPopup = this.config.platform === 'mobile' ? popup.eventListener(provider.redirectUri) : popup.pollPopup();
+    var openPopup = this.config.platform === 'mobile' ? popup.eventListener(provider.redirectUri) : popup.pollPopup(provider.redirectUri);
 
     return openPopup.then(function (oauthData) {
       if (provider.responseType === 'token' || provider.responseType === 'id_token token' || provider.responseType === 'token id_token') {
